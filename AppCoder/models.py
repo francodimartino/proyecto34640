@@ -7,7 +7,7 @@ class Curso(models.Model):
     comision=models.IntegerField()
 
     def __str__(self):
-        return self.nombre+" "+self.comision
+        return self.nombre+" "+str(self.comision)
 
 
 

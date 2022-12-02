@@ -97,7 +97,8 @@ def busquedaComision(request):
 
 def buscar(request):
 
-    if request.GET["comision"]:
+    if "comision" in request.GET:
+        # request.GET["comision"]:
 
         comision=request.GET["comision"]
 

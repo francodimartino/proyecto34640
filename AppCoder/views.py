@@ -1,10 +1,10 @@
 from django.shortcuts import render
-from .models import Curso, Profesor, Estudiante
+from .models import Curso, Profesor, Estudiante, Avatar
 from django.http import HttpResponse
 
 from django.urls import reverse_lazy
 
-from AppCoder.forms import CursoForm, ProfeForm, RegistroUsuarioForm
+from AppCoder.forms import CursoForm, ProfeForm, RegistroUsuarioForm, UserEditForm, AvatarForm
 
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
@@ -27,8 +27,22 @@ def curso(request):
     cadena_Texto="Curso guardado: "+curso.nombre+" "+str(curso.comision)
     return HttpResponse(cadena_Texto)
 
+
+def obtenerAvatar(request):
+    lista=Avatar.objects.filter(user=request.user)
+    if len(lista)!=0:
+        imagen=lista[0].imagen.url
+    else:
+        imagen="/media/avatares/avatarpordefecto.png"
+    return imagen
+
 @login_required
 def inicio(request):
+    lista=Avatar.objects.filter(user=request.user)
+    
+    return render (request, "AppCoder/inicio.html", {"imagen":obtenerAvatar(request)})
+
+
     
 
     return render (request, "AppCoder/inicio.html")
@@ -55,12 +69,12 @@ def profesores(request):
             profesion=informacion["profesion"]
             profe= Profesor(nombre=nombre, apellido=apellido, email=email, profesion=profesion)
             profe.save()
-            return render (request, "Appcoder/inicio.html", {"mensaje": "PROFESOR CREADO CORRECTAMENTE!!"})
+            return render (request, "Appcoder/inicio.html", {"mensaje": "PROFESOR CREADO CORRECTAMENTE!!", "imagen":obtenerAvatar(request)})
     else:
         formulario=ProfeForm()
 
 
-    return render (request, "AppCoder/profesores.html", {"form":formulario})
+    return render (request, "AppCoder/profesores.html", {"form":formulario, "imagen":obtenerAvatar(request)})
 
 @login_required
 def entregables(request):
@@ -230,4 +244,39 @@ def register(request):
         form=RegistroUsuarioForm()
     return render(request, "AppCoder/register.html", {"form":form})
 
+@login_required
+def editarPerfil(request):
+    usuario=request.user
+    if request.method=="POST":
+        form=UserEditForm(request.POST)
+        if form.is_valid():
+            info=form.cleaned_data
+            usuario.email=info["email"]
+            usuario.password1=info["password1"]
+            usuario.password2=info["password2"]
+            usuario.first_name=info["first_name"]
+            usuario.last_name=info["last_name"]
+            usuario.save()
+            return render(request, "AppCoder/inicio.html", {"mensaje":"Perfil editado correctamente"})
+        else:
+            return render(request, "AppCoder/editarUsuario.html", {"form":form, "nombreusuario":usuario.username, "mensaje":"Error al editar el perfil"})
+    else:
+        form=UserEditForm(instance=usuario)
+        return render(request, "AppCoder/editarUsuario.html", {"form":form, "nombreusuario":usuario.username})
 
+@login_required
+def agregarAvatar(request):
+    if request.method=="POST":
+        form=AvatarForm(request.POST, request.FILES)#ademas del post, como trae archivos (yo se que trae archivos xq conozco el form, tengo q usar request.files)
+        if form.is_valid():
+            avatarViejo=Avatar.objects.filter(user=request.user)
+            if len(avatarViejo)!=0:
+                avatarViejo[0].delete()
+            avatar=Avatar(user=request.user, imagen=request.FILES["imagen"])
+            avatar.save()
+            return render(request, "AppCoder/inicio.html", {"mensaje":"Avatar agregado correctamente"})
+        else:
+            return render(request, "AppCoder/AgregarAvatar.html", {"formulario": form, "usuario": request.user})
+    else:
+        form=AvatarForm()
+        return render(request , "AppCoder/AgregarAvatar.html", {"formulario": form, "usuario": request.user})
